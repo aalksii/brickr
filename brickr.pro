@@ -13,6 +13,7 @@ QMAKE_CXXFLAGS += -std=c++11
 # Input
 HEADERS += src/AssemblyPlugin.h \
            src/AssemblyWidget.h \
+           src/BrickrCli.h \
            src/LegoBrick.h \
            src/LegoCloud.h \
            src/LegoCloudNode.h \
@@ -25,6 +26,7 @@ HEADERS += src/AssemblyPlugin.h \
 FORMS += forms/AssemblyWidget.ui
 SOURCES += src/AssemblyPlugin.cpp \
            src/AssemblyWidget.cpp \
+           src/BrickrCli.cpp \
            src/LegoCloud.cpp \
            src/LegoCloudNode.cpp \
            src/main.cpp \

@@ -49,6 +49,38 @@ mkdir -p output
 docker compose up --build
 ```
 
+## CLI
+
+You can also run Brickr headlessly from Docker:
+
+```sh
+docker run --rm \
+  --platform=linux/amd64 \
+  --entrypoint /opt/brickr/brickr \
+  -e BINVOX_PATH=/opt/brickr/tools/obj_to_binvox.py \
+  -e QT_QPA_PLATFORM=offscreen \
+  -v "$PWD/output:/opt/brickr/output" \
+  brickr:local \
+  --cli \
+  --input /opt/brickr/models/toyplane.obj \
+  --resolution 30 \
+  --print-stats \
+  --export-obj /opt/brickr/output/toyplane.obj \
+  --save-instructions /opt/brickr/output/toyplane.svg
+```
+
+CLI flags:
+
+- `--input`: input `.obj` or `.binvox`
+- `--resolution`: voxelization resolution for mesh inputs
+- `--pre-hollow`: run pre-hollowing before optimization
+- `--shell-thickness`: shell thickness used with `--pre-hollow`
+- `--auto-optimize`: run Brickr's auto optimizer
+- `--finalize`: post-hollow, solve limits, and merge
+- `--print-stats`: print LEGO model stats
+- `--export-obj`: export the generated brick model as `.obj`
+- `--save-instructions`: export one instruction file per layer as `.svg`, `.png`, or `.jpg`
+
 ## Notes
 
 - `brickr` is a GUI app, not a command-line converter.
