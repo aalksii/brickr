@@ -1,0 +1,15 @@
+services:
+  brickr:
+    platform: linux/amd64
+    build:
+      context: .
+    image: brickr:local
+    environment:
+      BINVOX_PATH: /opt/brickr/tools/obj_to_binvox.py
+      BRICKR_OUTPUT_DIR: /opt/brickr/output
+    volumes:
+      - ./models:/opt/brickr/models
+      - ./output:/opt/brickr/output
+    ports:
+      - "5900:5900"
+      - "6080:6080"

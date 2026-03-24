@@ -8,6 +8,7 @@
 #include <QtGui>
 #include <QtOpenGL>
 #include <QSettings>
+#include <QTimer>
 
 #ifdef WIN32
 #include <windows.h>
@@ -35,7 +36,7 @@ QDialog *OpenGLScene::createDialog(const QString &windowTitle) const
     return dialog;
 }
 
-OpenGLScene::OpenGLScene(int width, int height)
+OpenGLScene::OpenGLScene(int width, int height, const QString &startupFile, int startupResolution)
     : m_backgroundColor(180, 225, 255)
     , m_distance(1.4f)
 {
@@ -119,6 +120,13 @@ OpenGLScene::OpenGLScene(int width, int height)
     addItem(m_lightItem);
 
     resetScene();
+
+    if(!startupFile.isEmpty())
+    {
+      QTimer::singleShot(0, m_assembly, [this, startupFile, startupResolution]() {
+        m_assembly->openFile(startupFile, startupResolution);
+      });
+    }
 }
 
 OpenGLScene::~OpenGLScene()

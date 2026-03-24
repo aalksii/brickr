@@ -1,9 +1,13 @@
 #ifndef Vector3_H
 #define Vector3_H
 
-#include "math.h"
+#include <algorithm>
+#include <cmath>
 #include <qglobal.h>
+
+#ifndef Q_MOC_RUN
 #include <iostream>
+#endif
 
 struct Vector3
 {
@@ -86,7 +90,7 @@ struct Vector3
 
     float norm() const
     {
-        return sqrt(x() * x() + y() * y() + z() * z());
+        return std::sqrt(x() * x() + y() * y() + z() * z());
     }
 
     float squaredNorm() const
@@ -123,11 +127,13 @@ struct Vector3
         return data_[index];
     }
 
+#ifndef Q_MOC_RUN
     friend std::ostream& operator<< (std::ostream& stream, const Vector3& a)
     {
       stream << a.x() << " " << a.y() << " " << a.z();
       return stream;
     }
+#endif
 };
 
 inline float dot(const Vector3 &a, const Vector3 &b)

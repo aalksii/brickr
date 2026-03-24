@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.o
+Makefile
+moc
+obj
+rcc
+ui
+output
+.qmake.stash
+brickr
+moc_*.cpp
+moc_*.o
+moc_predefs.h
+ui_*.h

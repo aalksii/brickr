@@ -18,6 +18,7 @@ public:
   ~AssemblyWidget();
 
   void setMaxLayerSpinBox(int max);
+  void openFile(const QString& filePath, int voxelizationResolution = 0);
 
 private slots:
   void on_testButton_pressed();
@@ -72,6 +73,10 @@ private:
   void loadFile(const QString& filePath, int voxelizationResolution = 0);
   bool isMeshExtensionSupported(const QString& extension) const;
   void scaleMesh(const QString &filePath, const QString &scaledFilePath);
+  QString getOpenFilePath(const QString &title, const QString &initialPath, const QString &filter = QString());
+  QString getSaveFilePath(const QString &title, const QString &initialPath, const QString &filter = QString());
+  QString getAutoSaveBasePath(const QString &suffix) const;
+  QString getCurrentModelBaseName() const;
 
   AssemblyPlugin *plugin_;
 };

@@ -13,6 +13,9 @@
 #include <QApplication>
 #include <QProcess>
 #include <QTextStream>
+#include <QRegularExpression>
+#include <QDir>
+#include <QDateTime>
 #include <fstream>
 
 //#define STATISTICS
@@ -28,6 +31,67 @@ AssemblyWidget::AssemblyWidget(AssemblyPlugin* _plugin, QWidget* _parent)
 }
 
 AssemblyWidget::~AssemblyWidget() {
+}
+
+QString AssemblyWidget::getOpenFilePath(const QString &title, const QString &initialPath, const QString &filter)
+{
+  QFileDialog dialog(this, title, initialPath, filter);
+  dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+  dialog.setFileMode(QFileDialog::ExistingFile);
+
+  if(dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+    return QString();
+
+  return dialog.selectedFiles().first();
+}
+
+QString AssemblyWidget::getSaveFilePath(const QString &title, const QString &initialPath, const QString &filter)
+{
+  QFileDialog dialog(this, title, initialPath, filter);
+  dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+  dialog.setAcceptMode(QFileDialog::AcceptSave);
+
+  if(dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+    return QString();
+
+  return dialog.selectedFiles().first();
+}
+
+QString AssemblyWidget::getCurrentModelBaseName() const
+{
+  QSettings settings;
+  QString currentFile = settings.value("AssemblyPlugin::LoadFile", "").toString();
+  QFileInfo currentFileInfo(currentFile);
+
+  if(currentFileInfo.baseName().isEmpty())
+    return QString("brickr_model");
+
+  return currentFileInfo.baseName();
+}
+
+QString AssemblyWidget::getAutoSaveBasePath(const QString &suffix) const
+{
+  const QString outputDirPath = qEnvironmentVariable("BRICKR_OUTPUT_DIR");
+  if(outputDirPath.isEmpty())
+    return QString();
+
+  QDir outputDir(outputDirPath);
+  if(!outputDir.exists())
+    outputDir.mkpath(".");
+
+  const QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+  const QString baseName = getCurrentModelBaseName();
+
+  return outputDir.filePath(baseName + "_" + timestamp + "." + suffix);
+}
+
+void AssemblyWidget::openFile(const QString &filePath, int voxelizationResolution)
+{
+  if(filePath.isNull())
+    return;
+
+  loadFile(filePath, voxelizationResolution);
+  resetUi();
 }
 
 void AssemblyWidget::setMaxLayerSpinBox(int max)
@@ -121,7 +185,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
   QSettings settings;
   QString lastOpenedFile = settings.value("AssemblyPlugin::LoadFile", "").toString();
 
-  QString selectedFilePath = QFileDialog::getOpenFileName(this, "Open File", lastOpenedFile);
+  QString selectedFilePath = getOpenFilePath("Open File", lastOpenedFile);
 
   if(selectedFilePath.isNull())
   {
@@ -158,7 +222,6 @@ void AssemblyWidget::on_loadFileButton_pressed()
 
 #endif
 
-  resetUi();
 }
 
 /*
@@ -359,14 +422,20 @@ void AssemblyWidget::on_saveInstructionsButton_pressed()
   QSettings settings;
   QString lastSavedFile = settings.value("AssemblyPlugin::SaveInstruction", "").toString();
 
-  QString filePathBase = QFileDialog::getSaveFileName(this, "Save instructions (.png .jpg or .svg)", lastSavedFile, "Images (*.png *.jpg *.svg)");
-  if(filePathBase == NULL)
+  QString filePathBase = getAutoSaveBasePath("svg");
+  if(filePathBase.isEmpty())
   {
-    //User canceled
-    return;
+    filePathBase = getSaveFilePath("Save instructions (.png .jpg or .svg)", lastSavedFile, "Images (*.png *.jpg *.svg)");
+    if(filePathBase == NULL)
+    {
+      //User canceled
+      return;
+    }
   }
 
   settings.setValue("AssemblyPlugin::SaveInstruction", filePathBase);
+
+  std::cout << "Saving instructions base: " << filePathBase.toStdString() << std::endl;
 
   QFileInfo fileInfo(filePathBase);
   bool useSVG = fileInfo.suffix().compare("svg", Qt::CaseInsensitive) == 0;
@@ -422,13 +491,16 @@ void AssemblyWidget::on_objExportButton_pressed()
   if(!legoCloudNode)
     return;
 
-  QString filename = QFileDialog::getSaveFileName(this, "Save as", "", "Obj (*.obj)");
+  QString filename = getAutoSaveBasePath("obj");
+  if(filename.isEmpty())
+    filename = getSaveFilePath("Save as", "", "Obj (*.obj)");
 
   if(filename.isNull())
   {
     return;
   }
 
+  std::cout << "Exporting OBJ to: " << filename.toStdString() << std::endl;
   legoCloudNode->exportToObj(filename);
 }
 
@@ -578,11 +650,32 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
       binvoxFile.remove();
     }
 
-    //First we try to find it in its default location
+    // Try bundled locations first so containerized Linux builds work without prompting.
 #ifdef WIN32
     QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/binvox.exe");
 #else
-    QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/../Resources/binvox");
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList defaultBinvoxPaths = {
+      qEnvironmentVariable("BINVOX_PATH"),
+      appDir + "/binvox",
+      appDir + "/resources/binvox",
+      appDir + "/../resources/binvox",
+      appDir + "/../Resources/binvox"
+    };
+
+    QFileInfo binvoxProgramFileInfo;
+    foreach (const QString &candidatePath, defaultBinvoxPaths)
+    {
+      if(candidatePath.isEmpty())
+        continue;
+
+      QFileInfo candidateInfo(candidatePath);
+      if(candidateInfo.exists())
+      {
+        binvoxProgramFileInfo = candidateInfo;
+        break;
+      }
+    }
 #endif
 //    std::cout << qPrintable(QCoreApplication::applicationFilePath()) << std::endl;
 
@@ -595,7 +688,7 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
       if(!binvoxProgramFileInfo.exists())
       {
         //If it is not found in the last specified location; we ask the user
-        QString binvoxFilePath = QFileDialog::getOpenFileName(this, "Locate binvox executable");
+        QString binvoxFilePath = getOpenFilePath("Locate binvox executable", "");
         if(binvoxFilePath.isNull())
         {
           std::cerr << "The binvox executable was not found." << std::endl;
@@ -622,7 +715,18 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
 #ifdef WIN32
     QString command("\"" + binvoxProgramFileInfo.absoluteFilePath() + "\" -d "+ QString::number(voxelizationResolution) + " \"" + scaledFilePath + "\"");
 #else
-    QString command("\"" + binvoxProgramFileInfo.absoluteFilePath()+ "\" -pb -d "+ QString::number(voxelizationResolution) + " \"" +scaledFilePath + "\"");
+    QString command;
+    if(binvoxProgramFileInfo.suffix().compare("py", Qt::CaseInsensitive) == 0)
+    {
+      command = "python3 \"" + binvoxProgramFileInfo.absoluteFilePath() + "\" -d " +
+                QString::number(voxelizationResolution) + " \"" + scaledFilePath + "\" \"" +
+                binvoxProgramOutputFile.fileName() + "\"";
+    }
+    else
+    {
+      command = "\"" + binvoxProgramFileInfo.absoluteFilePath()+ "\" -pb -d " +
+                QString::number(voxelizationResolution) + " \"" +scaledFilePath + "\"";
+    }
 #endif
 //    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -d "+ QString::number(voxelizationResolution) + " " +filePath);
     std::cout << "Running " << qPrintable(command) << std::endl;
@@ -720,4 +824,3 @@ void AssemblyWidget::setBrickLimit(BrickSize size, int value)
 
   legoCloudNode->getLegoCloud()->setBrickLimit(size, value);
 }
-

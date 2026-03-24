@@ -1,0 +1,13 @@
+*.o
+Makefile
+brickr
+moc_*.cpp
+moc_*.o
+moc_predefs.h
+ui_*.h
+.qmake.stash
+models/*_scaled.obj
+models/*_scaled.binvox
+models/*.binvox
+output/*
+!output/.gitkeep

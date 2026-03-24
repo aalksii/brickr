@@ -27,7 +27,7 @@ class OpenGLScene : public QGraphicsScene
     Q_OBJECT
 
 public:
-    OpenGLScene(int width, int height);
+    OpenGLScene(int width, int height, const QString &startupFile = QString(), int startupResolution = 0);
     ~OpenGLScene();
 
     void drawBackground(QPainter *painter, const QRectF &rect);

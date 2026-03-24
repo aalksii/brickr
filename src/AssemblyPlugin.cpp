@@ -227,7 +227,11 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
   }
 
   size = width * height * depth;
-  legoCloudNode->getLegoCloud()->setVoxelGridDimmension(height, width, depth);
+  // The binvox stream is decoded into (level, x, y) where x ranges over the
+  // header's first dimension ("depth") and y ranges over the third ("width").
+  // The original code only worked for square footprints because it swapped
+  // those horizontal dimensions when allocating the voxel grid.
+  legoCloudNode->getLegoCloud()->setVoxelGridDimmension(height, depth, width);
 
   if(colorFile.exists()) {
     if(colorFile.open(QIODevice::ReadOnly)) {
@@ -407,4 +411,3 @@ void AssemblyPlugin::draw()
     legoCloudNode_->render();
   }
 }
-
